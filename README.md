@@ -9,8 +9,8 @@ Aplikasi desktop berbasis **PySide6 (Qt for Python)** untuk mengelola operasiona
 | No | Nama | NIM |
 |----|------|-----|
 | 1 | Fiqro Najiah | F1D02310051 |
-| 2 | Kanda Rifqi Alfaz | F1D023100 |
-| 3 | Ayu Liza Putri Wiwaha | F1D023100 |
+| 2 | Kanda Rifqi Alfaz | F1D02310064 |
+| 3 | Ayu Liza Putri Wiwaha | F1D02310003 |
 
 ---
 

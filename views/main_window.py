@@ -1,12 +1,13 @@
-﻿import os
+import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QMainWindow,
-    QPushButton, QStackedWidget, QStatusBar,
+    QMenu, QPushButton, QStackedWidget, QStatusBar,
     QVBoxLayout, QWidget, QMessageBox,
 )
 
@@ -18,6 +19,11 @@ from views.laporan_view import LaporanView
 from views.pengaturan_view import PengaturanView
 from views.user_view import UserView
 
+ANGGOTA = [
+    ('Fiqro Najiah',          'F1D02310051'),
+    ('Kanda Rifqi Alfaz',     'F1D02310064'),
+    ('Ayu Liza Putri Wiwaha', 'F1D02310003'),
+]
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -25,6 +31,42 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(NAMA_WARNET)
         self.setMinimumSize(1180, 740)
         self._bangun_ui()
+        self._bangun_menu_bar()
+
+    def _bangun_menu_bar(self):
+        mb = self.menuBar()
+
+        # --- Menu File ---
+        menu_file = mb.addMenu('File')
+
+        act_logout = QAction('Logout', self)
+        act_logout.triggered.connect(self._logout)
+        menu_file.addAction(act_logout)
+
+        menu_file.addSeparator()
+
+        act_exit = QAction('Exit', self)
+        act_exit.setShortcut('Ctrl+Q')
+        act_exit.triggered.connect(self.close)
+        menu_file.addAction(act_exit)
+
+        # --- Menu Help ---
+        menu_help = mb.addMenu('Help')
+
+        act_about = QAction('About', self)
+        act_about.triggered.connect(self._show_about)
+        menu_help.addAction(act_about)
+
+    def _show_about(self):
+        anggota_str = '\n'.join(f'  {i+1}. {n}  —  {nim}' for i, (n, nim) in enumerate(ANGGOTA))
+        QMessageBox.information(
+            self, f'About {NAMA_WARNET}',
+            f'{NAMA_WARNET} — Sistem Manajemen Warung Internet\n'
+            f'Versi 1.0.0\n\n'
+            f'Anggota Kelompok:\n{anggota_str}\n\n'
+            f'Mata Kuliah: Pemrograman Visual\n'
+            f'Semester Genap 2025/2026'
+        )
 
     def _bangun_ui(self):
         pusat = QWidget()
@@ -128,8 +170,15 @@ class MainWindow(QMainWindow):
 
         root.addWidget(self.stack)
 
+        # --- Status Bar: nama & NIM semua anggota (permanen) ---
         self.status = QStatusBar()
         self.setStatusBar(self.status)
+
+        nim_label = QLabel(
+            '  |  '.join(f'{n}  ({nim})' for n, nim in ANGGOTA)
+        )
+        nim_label.setStyleSheet('font-size:11px; color:#555555; padding: 0 8px;')
+        self.status.addPermanentWidget(nim_label)
         self.status.showMessage(f'Selamat datang, {nama}!')
 
         self._ganti_halaman(0)

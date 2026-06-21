@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -11,13 +11,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
-
 
 class LaporanView(QWidget):
     minta_filter   = Signal(str, str)
@@ -29,6 +29,7 @@ class LaporanView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._semua_data = []
         self._bangun_ui()
 
     def _bangun_ui(self):
@@ -91,7 +92,17 @@ class LaporanView(QWidget):
         self.btn_refresh_lap.setObjectName('btnRefresh')
         self.btn_refresh_lap.clicked.connect(self.minta_refresh.emit)
         fl.addWidget(self.btn_refresh_lap)
+
         fl.addStretch()
+
+        # Search box
+        self.input_cari = QLineEdit()
+        self.input_cari.setPlaceholderText('Cari komputer, pelanggan, paket...')
+        self.input_cari.setFixedWidth(260)
+        self.input_cari.setFixedHeight(30)
+        self.input_cari.textChanged.connect(self._on_cari)
+        fl.addWidget(self.input_cari)
+
         root.addWidget(frame_filter)
 
         # --- Kartu ringkasan ---
@@ -106,7 +117,6 @@ class LaporanView(QWidget):
         root.addLayout(baris_kartu)
 
         # --- Tabel ---
-        # Kolom: ID(hidden) | Waktu | Komputer | Pelanggan | Paket | Durasi | Metode | Total | Status
         self.tabel = QTableWidget()
         self.tabel.setColumnCount(9)
         self.tabel.setHorizontalHeaderLabels([
@@ -128,6 +138,7 @@ class LaporanView(QWidget):
         self.tabel.setAlternatingRowColors(True)
         self.tabel.verticalHeader().setDefaultSectionSize(30)
         self.tabel.verticalHeader().setVisible(False)
+        self.tabel.setSortingEnabled(True)
         root.addWidget(self.tabel)
 
     def _buat_kartu(self, judul, nilai, warna, key=None):
@@ -154,7 +165,35 @@ class LaporanView(QWidget):
             self.date_selesai.date().toString('yyyy-MM-dd'),
         )
 
+    def _on_cari(self, teks: str):
+        kata = teks.strip().lower()
+        if not kata:
+            self._render_tabel(self._semua_data)
+            return
+        hasil = [
+            row for row in self._semua_data
+            if kata in str(row.get('nama_komputer', '')).lower()
+            or kata in str(row.get('nama_pelanggan', '')).lower()
+            or kata in str(row.get('paket', '')).lower()
+            or kata in str(row.get('metode', '')).lower()
+        ]
+        self._render_tabel(hasil)
+
     def tampilkan_data(self, data: list):
+        self._semua_data = data
+        kata = self.input_cari.text().strip().lower()
+        if kata:
+            data = [
+                row for row in data
+                if kata in str(row.get('nama_komputer', '')).lower()
+                or kata in str(row.get('nama_pelanggan', '')).lower()
+                or kata in str(row.get('paket', '')).lower()
+                or kata in str(row.get('metode', '')).lower()
+            ]
+        self._render_tabel(data)
+
+    def _render_tabel(self, data: list):
+        self.tabel.setSortingEnabled(False)
         self.tabel.setRowCount(0)
         total_lunas = 0
         jml_aktif   = 0
@@ -168,8 +207,8 @@ class LaporanView(QWidget):
             if row.get('sesi_aktif'):
                 durasi_str = row.get('durasi_live', '—')
 
-            status     = row.get('status', 'lunas')
-            is_aktif   = row.get('sesi_aktif', False)
+            status   = row.get('status', 'lunas')
+            is_aktif = row.get('sesi_aktif', False)
 
             vals = [
                 str(row.get('id', '')),
@@ -187,7 +226,6 @@ class LaporanView(QWidget):
                 item = QTableWidgetItem(value)
                 item.setTextAlignment(Qt.AlignCenter)
 
-                # Warnai kolom status
                 if k == 8:
                     if is_aktif:
                         item.setForeground(QColor('#1a1a1a'))
@@ -199,7 +237,6 @@ class LaporanView(QWidget):
                         item.setForeground(QColor('#1a1a1a'))
                         item.setBackground(QColor('#fecaca'))
 
-                # Baris aktif — italic
                 if is_aktif:
                     font = item.font()
                     font.setItalic(True)
@@ -215,13 +252,14 @@ class LaporanView(QWidget):
         n_transaksi = sum(1 for d in data if not d.get('sesi_aktif'))
         rata = total_lunas / n_transaksi if n_transaksi else 0
 
-        self._set_kartu('k_total',      f'Rp {total_lunas:,.0f}')
-        self._set_kartu('k_transaksi',   str(n_transaksi))
-        self._set_kartu('k_rata',        f'Rp {rata:,.0f}')
-        self._set_kartu('k_aktif',       str(jml_aktif))
+        self._set_kartu('k_total',     f'Rp {total_lunas:,.0f}')
+        self._set_kartu('k_transaksi', str(n_transaksi))
+        self._set_kartu('k_rata',      f'Rp {rata:,.0f}')
+        self._set_kartu('k_aktif',     str(jml_aktif))
+
+        self.tabel.setSortingEnabled(True)
 
     def update_row_durasi(self, sesi_id: int, durasi_live: str):
-        """Update kolom durasi untuk baris sesi aktif secara live."""
         for r in range(self.tabel.rowCount()):
             item_id = self.tabel.item(r, 0)
             if item_id and item_id.data(Qt.UserRole) == sesi_id:
@@ -234,5 +272,3 @@ class LaporanView(QWidget):
         lbl = self.findChild(QLabel, f'kartu_{key}')
         if lbl:
             lbl.setText(nilai)
-
-

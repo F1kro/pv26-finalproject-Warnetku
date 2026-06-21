@@ -1,13 +1,12 @@
-﻿import os, sys
+import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QHeaderView, QLabel, QPushButton,
+    QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
-
 
 class UserView(QWidget):
     minta_tambah  = Signal()
@@ -17,6 +16,7 @@ class UserView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._semua_data = []
         self._bangun_ui()
 
     def _bangun_ui(self):
@@ -64,7 +64,17 @@ class UserView(QWidget):
 
         for btn in [self.btn_tambah, self.btn_edit, self.btn_hapus, self.btn_refresh]:
             tb.addWidget(btn)
+
         tb.addStretch()
+
+        # Search box
+        self.input_cari = QLineEdit()
+        self.input_cari.setPlaceholderText('Cari nama atau username...')
+        self.input_cari.setFixedWidth(220)
+        self.input_cari.setFixedHeight(30)
+        self.input_cari.textChanged.connect(self._on_cari)
+        tb.addWidget(self.input_cari)
+
         root.addWidget(toolbar)
 
         self.tabel = QTableWidget()
@@ -82,10 +92,40 @@ class UserView(QWidget):
         self.tabel.setAlternatingRowColors(True)
         self.tabel.verticalHeader().setDefaultSectionSize(32)
         self.tabel.verticalHeader().setVisible(False)
+        self.tabel.setSortingEnabled(True)
         self.tabel.itemSelectionChanged.connect(self._on_pilih)
         root.addWidget(self.tabel)
 
+    def _on_cari(self, teks: str):
+        kata = teks.strip().lower()
+        if not kata:
+            self._render_tabel(self._semua_data)
+            return
+        hasil = [
+            u for u in self._semua_data
+            if kata in u['nama'].lower()
+            or kata in u['username'].lower()
+            or kata in u['role'].lower()
+        ]
+        self._render_tabel(hasil)
+
     def tampilkan_data(self, data: list, user_id_aktif: int = None):
+        self._semua_data = data
+        self._user_id_aktif = user_id_aktif
+        kata = self.input_cari.text().strip().lower()
+        if kata:
+            data = [
+                u for u in data
+                if kata in u['nama'].lower()
+                or kata in u['username'].lower()
+                or kata in u['role'].lower()
+            ]
+        self._render_tabel(data, user_id_aktif)
+
+    def _render_tabel(self, data: list, user_id_aktif: int = None):
+        if user_id_aktif is None:
+            user_id_aktif = getattr(self, '_user_id_aktif', None)
+        self.tabel.setSortingEnabled(False)
         self.tabel.setRowCount(0)
         for user in data:
             r = self.tabel.rowCount()
@@ -113,12 +153,12 @@ class UserView(QWidget):
                         item.setForeground(QColor('#059669'))
                     else:
                         item.setForeground(QColor('#dc2626'))
-                # Tandai user yang sedang login
                 if user['id'] == user_id_aktif:
                     font = item.font()
                     font.setBold(True)
                     item.setFont(font)
                 self.tabel.setItem(r, k, item)
+        self.tabel.setSortingEnabled(True)
 
     def _id_terpilih(self) -> int | None:
         r = self.tabel.currentRow()
