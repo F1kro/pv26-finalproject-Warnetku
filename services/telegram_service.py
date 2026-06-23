@@ -1,4 +1,4 @@
-﻿import sys, os
+import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, NAMA_WARNET
